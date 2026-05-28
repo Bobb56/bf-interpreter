@@ -1,5 +1,8 @@
+use crate::irbuilder::print_ir;
+
 mod irbuilder;
 mod runtime;
+mod optimizer;
 
 
 pub fn get_file_name() -> String {
@@ -21,14 +24,25 @@ fn main() {
         get_file_name()
     };
 
-    let instructions = irbuilder::build(&filename).expect("Please enter a valid file name");
+    let mut instructions = irbuilder::build(&filename).expect("Please enter a valid file name");
 
-    if let Some(_) = std::env::args().find(|string| string == "--jit") {
+    print_ir(&instructions);
+    optimizer::simplify_all_bodies(&mut instructions);
+    optimizer::simplify_simple_loops(&mut instructions);
+
+    println!("");
+    print_ir(&instructions);
+
+    /*if let Some(_) = std::env::args().find(|string| string == "--jit") {
         runtime::run_jit(&instructions);
     }
     else {
         runtime::run(&instructions);
-    }
+    }*/
+
     
-    // println!("{:?}", instructions);
+    
+    //let simpl_instr = abstract_interpreter::simplify_body(&instructions);
+
+    //println!("{:?}", simpl_instr);
 }

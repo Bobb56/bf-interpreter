@@ -89,7 +89,7 @@ pub fn run_jit(instructions: &Vec<Instr>) -> () {
 
 
 
-// Code taken from https://github.com/rust-lang/gccjit.rs.git and adapted to new IR
+// Code taken from https://github.com/rust-lang/gccjit.rs.git and adapted to our IR
 fn codegen<'a, 'ctx>(ops: &[Instr], context: &'a gccjit::Context<'ctx>) -> bool {
     // first we set up the function so that it has signature () -> void.
     let void_ty = context.new_type::<()>();
