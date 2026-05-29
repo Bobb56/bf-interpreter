@@ -1,5 +1,6 @@
-use super::irbuilder::Instr;
+use super::irbuilder::{Instr, Node};
 use std::default::Default;
+use super::optimizer::SimplInstr;
 use std::mem;
 
 use gccjit::ToRValue;
@@ -39,8 +40,8 @@ impl IO {
     }
 
     pub fn write(buf: &Vec<u8>, pointer: usize, count: i32) -> () {
-        for i in 0..count {
-            print!("{}", buf[(pointer as i32 + i) as usize] as char);
+        for _ in 0..count {
+            print!("{}", buf[pointer] as char);
         }
     }
 }
@@ -64,6 +65,33 @@ pub fn run(instructions: &Vec<Instr>) -> () {
         pc += 1;
     }
 }
+
+
+
+pub fn run_optimized(instructions: &Vec<SimplInstr>) -> () {
+    let mut tape: Vec<u8> = vec![0 ; INITIAL_TAPE_LEN];
+    let mut io= IO::new();
+    let mut pointer: usize = 0;
+    let mut pc: i32 = 0;
+    while (pc as usize) < instructions.len() {
+        match instructions[pc as usize] {
+            SimplInstr::Add(offset, value) => tape[(pointer as i32 + offset) as usize] = ((tape[(pointer as i32 + offset) as usize] as i32 + value)%256) as u8,
+            SimplInstr::AddMul(offset1, value, offset2) => if tape[pointer] != 0 {
+                //println!("DBG_VALUE: {}, {}, {}", pointer, offset1, (pointer as i32 + offset1) as usize);
+                tape[(pointer as i32 + offset1) as usize] = ((tape[(pointer as i32 + offset1) as usize] as i32 + value * tape[(pointer as i32 + offset2) as usize] as i32)%256) as u8
+            },
+            SimplInstr::Move(value) => pointer = ((pointer as i32 + value) as usize)%tape.len(),
+            SimplInstr::Write(value) => IO::write(&tape, pointer, value),
+            SimplInstr::Read(n) => io.read(n as usize, &mut tape[pointer..=pointer+n as usize]),
+            SimplInstr::CondBr(addr) => if tape[pointer] == 0 {pc = addr as i32},
+            SimplInstr::Goto(addr) => pc = addr as i32 - 1,
+            SimplInstr::Set(offset, value) => tape[(pointer as i32 + offset) as usize] = value as u8
+        };
+        pc += 1;
+    }
+    println!("\nSuccessfully executed!");
+}
+
 
 
 // Code taken and adapted from https://github.com/rust-lang/gccjit.rs.git

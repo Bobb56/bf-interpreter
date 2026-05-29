@@ -1,6 +1,8 @@
+use crate::irbuilder::Node::DeletedItem;
+
 use super::optimizer::SimplInstr;
 
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum Instr {
     Add(i32),
     Move(i32),
@@ -11,13 +13,22 @@ pub enum Instr {
     Goto(usize)
 }
 
+
+pub fn is_io(instr: Instr) -> bool {
+    match instr {
+        Instr::Write(_) | Instr::Read(_) => true,
+        _ => false
+    }
+}
+
 // This represents a Brainfuck program
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum Node {
     Body(Vec<Instr>), // A block of instructions
     Loop(Vec<usize>), // A node in the tree, the integers are the successors (the body of the loop)
     Root(Vec<usize>), // Root of the tree. The integers are the nodes of the successors
-    OptimizedBody(Vec<SimplInstr>)
+    OptimizedBody(Vec<SimplInstr>),
+    DeletedItem
 }
 
 
@@ -92,7 +103,8 @@ impl IRBuilder {
     fn push_instruction_at_current_level(&mut self, instr: Instr) {
         // If the last Node of the current level is a Loop, then we add a Body
         let need_to_add_new_body = match &self.items[self.get_last_block_of_current_level()] {
-            Node::Body(_) | Node::Root(_) | Node::OptimizedBody(_) => false,
+            Node::Body(instrs) => instrs.len() > 0 && is_io(instr) != is_io(instrs[instrs.len()-1]),
+            Node::Root(_) | Node::OptimizedBody(_) | DeletedItem => false,
             Node::Loop(_) => true
         };
 
@@ -104,11 +116,11 @@ impl IRBuilder {
         let last_block_of_current_level = self.get_last_block_of_current_level();
         match &mut self.items[last_block_of_current_level] {
             Node::Body(instrs) => instrs.push(instr),
-            _ => panic!("ERROR: THE END OF THE CURRENT LEVEL IS NOT A BODY WHEREAS WE JUST ADDED ONE")
+            _ => panic!("ERROR: THE END OF THE CURRENT LEVEL IS NOT A BODY, WHEREAS WE JUST ADDED ONE")
         }
     }
 
-        
+    
 
     pub fn add_instruction(&mut self, char: char, end: bool) -> () {
         if end || add_new_instruction(char, self.last_character) {
